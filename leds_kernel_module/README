@@ -1,0 +1,14 @@
+Je kunt
+
+$make
+
+uitvoeren om de kernel module te compileren. 
+Doe dit AUB niet met sudo!! 
+
+Heb je dit wel met sudo gedaan dan compileert het niet meer.
+Dit kun je oplossen met de volgende commando's:
+
+$sudo pacman -U ~/*.xz
+
+Geef 'y' als er iets wordt gevraagd. Hierna kun
+je de kernel module weer installeren.
