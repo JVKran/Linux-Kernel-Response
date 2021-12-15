@@ -31,14 +31,16 @@ void * LW_virtual;
 volatile int *RTM_ptr;
 
 static int rtm_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
+static ssize_t rtm_dev_read(struct file *file, char __user *buf, size_t count, loff_t *offset);
 static long rtm_dev_ioctl(struct file * file, unsigned int cmd, unsigned long arg);
 static int rtm_dev_release(struct inode *inode, struct file *file);
 
 // File operations struct
 static const struct file_operations rtm_dev_ops = {
-	.owner 	= THIS_MODULE,
-    .write	= rtm_dev_write,
-    .release = rtm_dev_release,
+	.owner 	        = THIS_MODULE,
+    .read           = rtm_dev_read,
+    .write	        = rtm_dev_write,
+    .release        = rtm_dev_release,
     .unlocked_ioctl = rtm_dev_ioctl
 };
 
@@ -59,7 +61,6 @@ static int rtm_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
 }
 
 irq_handler_t irq_handler(int irq, void *dev_id, struct pt_regs * regs){
-
     struct kernel_siginfo info;
     memset(&info, 0, sizeof(struct kernel_siginfo));
 
@@ -148,6 +149,23 @@ static int clean_handler(struct platform_device *pdev){
 	return 0;
 }
 
+// Returns response tim in ms.
+static ssize_t rtm_dev_read(struct file *file, char __user *buf, size_t count, loff_t *offset){
+    uint8_t data[5];
+    sprintf(data, "%i",(*RTM_ptr + 7));
+    size_t datalen = strlen(data);
+
+    if (count > datalen) {
+        count = datalen;
+    }
+
+    if (copy_to_user(buf, data, count)) {
+        return -EFAULT;
+    }
+
+    return count;
+}
+
 static ssize_t rtm_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset){
     size_t maxdatalen = 30;
     uint8_t databuf[maxdatalen];
@@ -165,6 +183,8 @@ static ssize_t rtm_dev_write(struct file *file, const char __user *buf, size_t c
     int value;
     sscanf(databuf, "%i", &value);
     // Write value into delay register
+    // TODO: Verify if this underneath is right?
+    *(RTM_ptr + 7) = value;
 
     return count;
 }
