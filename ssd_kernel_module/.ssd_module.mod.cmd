@@ -1,0 +1,1 @@
+cmd_/home/student/response_meter/ssd_kernel_module/ssd_module.mod := { echo  /home/student/response_meter/ssd_kernel_module/ssd_module.o; echo; } > /home/student/response_meter/ssd_kernel_module/ssd_module.mod

@@ -1,0 +1,1 @@
+cmd_/home/student/response_meter/ssd_kernel_module/Module.symvers := sed 's/ko$$/o/' /home/student/response_meter/ssd_kernel_module/modules.order | scripts/mod/modpost     -o /home/student/response_meter/ssd_kernel_module/Module.symvers -e -i Module.symvers   -T -
