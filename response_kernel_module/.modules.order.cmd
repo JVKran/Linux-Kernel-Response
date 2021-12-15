@@ -1,0 +1,1 @@
+cmd_/home/student/response_meter/response_kernel_module/modules.order := {   echo /home/student/response_meter/response_kernel_module/response_module.ko; :; } | awk '!x[$$0]++' - > /home/student/response_meter/response_kernel_module/modules.order

@@ -19,7 +19,7 @@ MODULE_LICENSE("GPL");
 #define HW_REGS_MASK    (HW_REGS_SPAN - 1)
 
 // Module and hardware configuration
-#define DEV_TREE_LABEL  "response,meter"
+#define DEV_TREE_LABEL  "ssd,controller"
 #define CONTROLLER_BASE 0x20
 #define DEVNAME         "Seven Segment Module"
 #define MAX_DEV	        1
