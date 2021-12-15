@@ -1,0 +1,1 @@
+cmd_/home/student/response_meter/leds_kernel_module/leds_module.mod := { echo  /home/student/response_meter/leds_kernel_module/leds_module.o; echo; } > /home/student/response_meter/leds_kernel_module/leds_module.mod

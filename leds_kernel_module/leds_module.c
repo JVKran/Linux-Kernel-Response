@@ -31,11 +31,13 @@ volatile int *LEDR_ptr;
 
 static int led_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
 
+// File operations struct
 static const struct file_operations led_dev_ops = {
 	.owner 	= THIS_MODULE,
 	.write	= led_dev_write
 };
 
+// Character device data and configuration
 struct led_char_dev_data {
 	struct cdev cdev;
 };

@@ -1,0 +1,1 @@
+cmd_/home/student/response_meter/leds_kernel_module/leds_module.ko := ld -r -EL --build-id  -T ./scripts/module-common.lds -o /home/student/response_meter/leds_kernel_module/leds_module.ko /home/student/response_meter/leds_kernel_module/leds_module.o /home/student/response_meter/leds_kernel_module/leds_module.mod.o;  true
