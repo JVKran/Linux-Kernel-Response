@@ -13,17 +13,21 @@
 
 MODULE_LICENSE("GPL");
 
+// Memory management
 #define HW_REGS_BASE    0xff200000
 #define HW_REGS_SPAN    0x00200000
 #define HW_REGS_MASK    (HW_REGS_SPAN - 1)
-#define MAX_DEV	        1
 
+// Module and hardware configuration
 #define DEV_TREE_LABEL  "altr,leds"
 #define LED_PIO_BASE    0x10
 #define DEVNAME         "Leds Module"
+#define MAX_DEV	        1
+#define MAX_DATA_LEN    30
 
-void * LW_virtual; // Lightweight bridge base address
-volatile int *LEDR_ptr; // virtual addresses
+// Virtual and bridge base addresses
+void * LW_virtual;
+volatile int *LEDR_ptr;
 
 static int led_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
 
@@ -46,21 +50,17 @@ static int led_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
 }
 
 static int init_handler(struct platform_device * pdev){
-	int ret;
-
-	//Koppel fysiek geheugenbereik aan pointer
+    // Map physical memory to pointers
 	LW_virtual = ioremap(HW_REGS_BASE, HW_REGS_SPAN);
-    printk(KERN_INFO "Init handler.");
-
-	LEDR_ptr = LW_virtual + LED_PIO_BASE; //offset naar PIO registers
+	LEDR_ptr = LW_virtual + LED_PIO_BASE;
 	*LEDR_ptr = 0;
 
+    // Configure character device region
 	dev_t dev;
-
-    ret = alloc_chrdev_region(&dev, 0, MAX_DEV, "leds_test_module");
-
+    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, "leds_test_module");
     dev_major = MAJOR(dev);
 
+    // Create character device class
     led_dev_class = class_create(THIS_MODULE, "leds_test_module");
     led_dev_class->dev_uevent = led_dev_uevent;
 
@@ -70,71 +70,53 @@ static int init_handler(struct platform_device * pdev){
         led_dev_data[i].cdev.owner = THIS_MODULE;
 
         cdev_add(&led_dev_data[i].cdev, MKDEV(dev_major, i), 1);
-
         device_create(led_dev_class, NULL, MKDEV(dev_major, i), NULL, "leds_test_module");
     }
 
 	return ret;
 }
-static int clean_handler(struct platform_device *pdev)
-{
-
-	*LEDR_ptr = 0; // Alle leds_test_module uitzettten
-	iounmap (LW_virtual); //mapping ongedaan maken
+static int clean_handler(struct platform_device *pdev){
+    // Turn leds off and undo mapping
+	*LEDR_ptr = 0;
+	iounmap (LW_virtual);
 
 	int i;
-
     for (i = 0; i < MAX_DEV; i++) {
         device_destroy(led_dev_class, MKDEV(dev_major, i));
     }
 
+    // Unregister character device class and region
     class_unregister(led_dev_class);
     class_destroy(led_dev_class);
-
     unregister_chrdev_region(MKDEV(dev_major, 0), MINORMASK);
 
 	return 0;
 }
 
-static ssize_t led_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
-{
-    size_t maxdatalen = 30, ncopied;
+static ssize_t led_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset){
+    size_t maxdatalen = 30;
     uint8_t databuf[maxdatalen];
-
-    printk("Writing device: %d\n", MINOR(file->f_path.dentry->d_inode->i_rdev));
 
     if (count < maxdatalen) {
         maxdatalen = count;
     }
 
-    ncopied = copy_from_user(databuf, buf, maxdatalen);
-
+    size_t ncopied = copy_from_user(databuf, buf, maxdatalen);
     if (ncopied == 0) {
-        printk("Copied %zd bytes from the user\n", maxdatalen);
-    } else {
         printk("Could't copy %zd bytes from the user\n", ncopied);
     }
 
     databuf[maxdatalen] = 0;
-
-    printk("Data from the user: %s\n", databuf);
     sscanf(databuf, "%i", LEDR_ptr);
 
     return count;
 }
 
-
-/*
-* Hierin beschrijven we welk device we willen koppelen
-* aan onze module. Deze moet in de device-tree overeen-
-* komen! 
-*/
 static const struct of_device_id mijn_module_id[] ={
 	{.compatible = DEV_TREE_LABEL},
 	{}
 };
 
-//handlers e.d. koppelen
 static struct platform_driver mijn_module_driver = {
 	.driver = {
 	 	.name = DEVNAME,
@@ -145,5 +127,4 @@ static struct platform_driver mijn_module_driver = {
 	.remove = clean_handler
 };
 
-//module registreren
 module_platform_driver(mijn_module_driver);
