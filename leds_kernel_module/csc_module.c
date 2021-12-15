@@ -36,13 +36,13 @@ static const struct file_operations led_dev_ops = {
 	.write	= led_dev_write
 };
 
-struct mychar_device_data {
+struct led_char_dev_data {
 	struct cdev cdev;
 };
 
 static int dev_major = 0;
 static struct class *led_dev_class = NULL;
-static struct mychar_device_data led_dev_data[MAX_DEV];
+static struct led_char_dev_data led_dev_data[MAX_DEV];
 
 static int led_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
     add_uevent_var(env, "DEVMODE=%#o", 0666);
@@ -50,7 +50,7 @@ static int led_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
 }
 
 static int init_handler(struct platform_device * pdev){
-    // Map physical memory to pointers
+    // Map physical memory to pointers and turn leds off
 	LW_virtual = ioremap(HW_REGS_BASE, HW_REGS_SPAN);
 	LEDR_ptr = LW_virtual + LED_PIO_BASE;
 	*LEDR_ptr = 0;
@@ -112,19 +112,19 @@ static ssize_t led_dev_write(struct file *file, const char __user *buf, size_t c
     return count;
 }
 
-static const struct of_device_id mijn_module_id[] ={
+static const struct of_device_id led_module_id[] ={
 	{.compatible = DEV_TREE_LABEL},
 	{}
 };
 
-static struct platform_driver mijn_module_driver = {
+static struct platform_driver led_module_driver = {
 	.driver = {
 	 	.name = DEVNAME,
 		.owner = THIS_MODULE,
-		.of_match_table = of_match_ptr(mijn_module_id),
+		.of_match_table = of_match_ptr(led_module_id),
 	},
 	.probe = init_handler,
 	.remove = clean_handler
 };
 
-module_platform_driver(mijn_module_driver);
+module_platform_driver(led_module_driver);
