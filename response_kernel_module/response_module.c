@@ -151,8 +151,9 @@ static int clean_handler(struct platform_device *pdev){
 
 // Returns response tim in ms.
 static ssize_t rtm_dev_read(struct file *file, char __user *buf, size_t count, loff_t *offset){
-    uint8_t data[5];
-    sprintf(data, "%i",(*RTM_ptr + 7));
+    uint8_t data[50];
+    uint16_t response_time = *(RTM_ptr) >> 16;
+    sprintf(data, "%i", response_time);
     size_t datalen = strlen(data);
 
     if (count > datalen) {
@@ -172,11 +173,6 @@ static ssize_t rtm_dev_write(struct file *file, const char __user *buf, size_t c
 
     if (count < maxdatalen) {
         maxdatalen = count;
-    }
-
-    size_t ncopied = copy_from_user(databuf, buf, maxdatalen);
-    if (ncopied == 0) {
-        printk("Could't copy %zd bytes from the user\n", ncopied);
     }
 
     databuf[maxdatalen] = 0;

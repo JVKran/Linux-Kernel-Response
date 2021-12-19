@@ -28,7 +28,14 @@ volatile int rtm_state = 0;
 
 void exit_handler(int n, siginfo_t *info, void *unused){
 	exit_request = (n == SIGINT);
-	printf(" pressed so execution is interrupted!\n");
+}
+
+int read_response_time(uint16_t* time){
+    char buf[10];
+    int read_chars = read(fd, buf, sizeof(buf));
+
+    sscanf(buf, "%hu", time);
+    return read_chars > 0 ? 0 : -1;
 }
 
 void response_irq(int n, siginfo_t *info, void *unused){
@@ -131,21 +138,18 @@ int main(){
 					if(time % 100 == 0){
 						leds <<= 1;
 						leds |= 1UL;
-						printf("Leds are %i!\n", leds);
 						control_leds(leds);
 					}
 					if(rtm_state == 4){
-						// TODO: read response time from register.
-						response_time = time;
+						read_response_time(&response_time);
 						if(response_time >= MIN_RESP_TIME){
-							printf("Responded within %ims!\n", response_time);
+							printf("Responded within %ims while app says %ims!\n", response_time, time);
 							next_state = STOP;
 						}
 						break;
 					}
 					usleep(1000);
 				}
-				printf("Going to %i!\n", next_state);
 				state = next_state;
 				break;
 			}
@@ -163,7 +167,7 @@ int main(){
 					}
 					usleep(100000);			// Sleep for 100ms.
 				}
-				control_leds(0);
+				leds = 0;
 				state = IDLE;
 				break;
 			}
