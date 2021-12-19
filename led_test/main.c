@@ -24,7 +24,7 @@ static int fd;
 
 enum states {IDLE, START, DELAY, COUNT, STOP};
 enum states state = IDLE;
-int rtm_state = 0;
+volatile int rtm_state = 0;
 
 void exit_handler(int n, siginfo_t *info, void *unused){
 	exit_request = (n == SIGINT);
@@ -33,8 +33,8 @@ void exit_handler(int n, siginfo_t *info, void *unused){
 
 void response_irq(int n, siginfo_t *info, void *unused){
     if (n == 10 && info->si_int != 0) {
-        printf("Interrupt received with state %i.\n", info->si_int);
-		rtm_state = info->si_int;
+		rtm_state = (uint16_t)info->si_int;
+        printf("Interrupt received with state %hu.\n", rtm_state);
     }
 }
 
@@ -113,6 +113,7 @@ int main(){
 				control_leds(leds);
 				if(rtm_state == 1){
 					state = START;
+					printf("Starting!\n");
 				}
 				break;
 			}
@@ -120,6 +121,7 @@ int main(){
 				control_ssd(0);
 				if(rtm_state == 3){
 					state = COUNT;
+					printf("Counting!\n");
 				}
 				break;
 			}
@@ -129,6 +131,7 @@ int main(){
 					if(time % 100 == 0){
 						leds <<= 1;
 						leds |= 1UL;
+						printf("Leds are %i!\n", leds);
 						control_leds(leds);
 					}
 					if(rtm_state == 4){
@@ -142,6 +145,7 @@ int main(){
 					}
 					usleep(1000);
 				}
+				printf("Going to %i!\n", next_state);
 				state = next_state;
 				break;
 			}
@@ -159,6 +163,7 @@ int main(){
 					}
 					usleep(100000);			// Sleep for 100ms.
 				}
+				control_leds(0);
 				state = IDLE;
 				break;
 			}
