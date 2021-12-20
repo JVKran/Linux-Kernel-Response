@@ -1,4 +1,4 @@
 build:
-	gcc main.c -o main
+	gcc main.c -o main -lcurl
 run:
 	./main

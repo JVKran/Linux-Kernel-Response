@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-// #include <curl/curl.h>
+#include <curl/curl.h>
 
 #define LED_FILE		"/dev/leds_test_module"
 #define SSD_FILE		"/dev/ssd_test_module"
@@ -19,6 +19,7 @@
 #define RTM_IRQ			10
 
 #define MIN_RESP_TIME	80
+#define ACCESS_TOKEN	"Response-Client"
 #define min(X,Y) (((X) < (Y)) ? (X) : (Y))
 
 static bool exit_request = false;
@@ -108,6 +109,44 @@ void close_files(){
 	close(led_fd);
 	close(meas_fd);
 	close(rtm_fd);
+}
+
+// curl -v -X POST --data "{response_time: 163}" https://thingsboard.jvkran.com/api/v1/Response-Client/telemetry --header "Content-Type:application/json" --libcurl code.c
+int send_request(const char* attribute, const uint16_t value){
+	CURLcode ret;
+  CURL *hnd;
+  struct curl_slist *slist1;
+
+  slist1 = NULL;
+  slist1 = curl_slist_append(slist1, "Content-Type:application/json");
+
+  char payload[100], url[200];
+  sprintf(payload, "{%s: %i}", attribute, value);
+  sprintf(url, "https://thingsboard.jvkran.com/api/v1/%s/telemetry", ACCESS_TOKEN);
+
+  hnd = curl_easy_init();
+  curl_easy_setopt(hnd, CURLOPT_BUFFERSIZE, 102400L);
+  curl_easy_setopt(hnd, CURLOPT_URL, url);
+  curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, payload);
+  curl_easy_setopt(hnd, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)20);
+  curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
+  curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.78.0");
+  curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
+  curl_easy_setopt(hnd, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
+  curl_easy_setopt(hnd, CURLOPT_SSH_KNOWNHOSTS, "/home/student/.ssh/known_hosts");
+  curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, "POST");
+  curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1L);
+  curl_easy_setopt(hnd, CURLOPT_FTP_SKIP_PASV_IP, 1L);
+  curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
+  ret = curl_easy_perform(hnd);
+
+  curl_easy_cleanup(hnd);
+  hnd = NULL;
+  curl_slist_free_all(slist1);
+  slist1 = NULL;
+
+  return (int)ret;
 }
 
 int rotate_left(int num, int shift){
@@ -206,6 +245,7 @@ int main(){
 				leds = 0;
 				tries++;
 				printf("Now %i tries!\n", tries);
+				send_request("response_time", response_time);
 				state = IDLE;
 				break;
 			}
