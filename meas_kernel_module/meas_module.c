@@ -19,9 +19,10 @@ MODULE_LICENSE("GPL");
 #define HW_REGS_MASK    (HW_REGS_SPAN - 1)
 
 // Module and hardware configuration
-#define DEV_TREE_LABEL  "altr,leds"
-#define LED_PIO_BASE    0x10
-#define DEVNAME         "Leds Module"
+#define DEV_TREE_LABEL  "altr,meas"
+#define MEAS_PIO_BASE   0x00
+#define DEVNAME         "Measurement Module"
+#define FILE_NAME       "measurement_module"
 #define MAX_DEV	        1
 #define MAX_DATA_LEN    30
 
@@ -53,16 +54,16 @@ static int led_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
 static int init_handler(struct platform_device * pdev){
     // Map physical memory to pointers and turn leds off
 	LW_virtual = ioremap(HW_REGS_BASE, HW_REGS_SPAN);
-	LEDR_ptr = LW_virtual + LED_PIO_BASE;
+	LEDR_ptr = LW_virtual + MEAS_PIO_BASE;
 	*LEDR_ptr = 0;
 
     // Configure character device region
 	dev_t dev;
-    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, "leds_test_module");
+    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, FILE_NAME);
     dev_major = MAJOR(dev);
 
     // Create character device class
-    led_dev_class = class_create(THIS_MODULE, "leds_test_module");
+    led_dev_class = class_create(THIS_MODULE, FILE_NAME);
     led_dev_class->dev_uevent = led_dev_uevent;
 
     int i;
@@ -71,7 +72,7 @@ static int init_handler(struct platform_device * pdev){
         led_dev_data[i].cdev.owner = THIS_MODULE;
 
         cdev_add(&led_dev_data[i].cdev, MKDEV(dev_major, i), 1);
-        device_create(led_dev_class, NULL, MKDEV(dev_major, i), NULL, "leds_test_module");
+        device_create(led_dev_class, NULL, MKDEV(dev_major, i), NULL, FILE_NAME);
     }
 
 	return ret;
@@ -103,9 +104,6 @@ static ssize_t led_dev_write(struct file *file, const char __user *buf, size_t c
     }
 
     size_t ncopied = copy_from_user(databuf, buf, maxdatalen);
-    if (ncopied == 0) {
-        printk("Could't copy %zd bytes from the user\n", ncopied);
-    }
 
     databuf[maxdatalen] = 0;
     sscanf(databuf, "%i", LEDR_ptr);

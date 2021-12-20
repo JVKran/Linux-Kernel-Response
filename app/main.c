@@ -14,13 +14,15 @@
 #define LED_FILE		"/dev/leds_test_module"
 #define SSD_FILE		"/dev/ssd_test_module"
 #define RTM_FILE		"/dev/response_module"
+#define MEAS_FILE		"/dev/measurement_module"
 #define RTM_IRQ			10
 
 #define MIN_RESP_TIME	80
 
 static bool exit_request = false;
-uint16_t highscore = UINT16_MAX;
+uint16_t highscore = UINT16_MAX, tries = 0;
 static int fd;
+uint32_t ssd = 0;
 
 enum states {IDLE, START, DELAY, COUNT, STOP};
 enum states state = IDLE;
@@ -28,6 +30,36 @@ volatile int rtm_state = 0;
 
 void exit_handler(int n, siginfo_t *info, void *unused){
 	exit_request = (n == SIGINT);
+}
+
+int control_leds(const uint32_t value){
+    FILE * fp = fopen(LED_FILE, "a");
+    if(fp == NULL){
+        return 1;
+    }
+
+    fprintf(fp, "%i", value);
+    return fclose(fp);
+}
+
+int control_ssd(const uint16_t score, const uint8_t tries){
+	FILE * fp = fopen(SSD_FILE, "a");
+    if(fp == NULL){
+        return 1;
+    }
+
+    fprintf(fp, "%u%.4u", tries, score);
+    return fclose(fp);
+}
+
+int control_meas(const uint16_t state){
+	FILE * fp = fopen(MEAS_FILE, "a");
+    if(fp == NULL){
+        return 1;
+    }
+
+    fprintf(fp, "%u", 1UL << state);
+    return fclose(fp);
 }
 
 int read_response_time(uint16_t* time){
@@ -42,27 +74,8 @@ void response_irq(int n, siginfo_t *info, void *unused){
     if (n == 10 && info->si_int != 0) {
 		rtm_state = (uint16_t)info->si_int;
         printf("Interrupt received with state %hu.\n", rtm_state);
+		control_meas(rtm_state);
     }
-}
-
-int control_leds(const uint32_t value){
-    FILE * fp = fopen(LED_FILE, "a");
-    if(fp == NULL){
-        return 1;
-    }
-
-    fprintf(fp, "%i", value);
-    return fclose(fp);
-}
-
-int control_ssd(const uint32_t value){
-	FILE * fp = fopen(SSD_FILE, "a");
-    if(fp == NULL){
-        return 1;
-    }
-
-    fprintf(fp, "%i", value);
-    return fclose(fp);
 }
 
 int init_rtm(int * number){
@@ -113,9 +126,9 @@ int main(){
 		switch(state){
 			case IDLE: {
 				if(highscore != UINT16_MAX){
-					control_ssd(highscore);
+					control_ssd(highscore, tries);
 				} else {
-					control_ssd(0);
+					control_ssd(0, tries);
 				}
 				control_leds(leds);
 				if(rtm_state == 1){
@@ -125,7 +138,7 @@ int main(){
 				break;
 			}
 			case START: {
-				control_ssd(0);
+				control_ssd(0, tries);
 				if(rtm_state == 3){
 					state = COUNT;
 					printf("Counting!\n");
@@ -154,7 +167,7 @@ int main(){
 				break;
 			}
 			case STOP: {
-				control_ssd(response_time);
+				control_ssd(response_time, tries);
 				bool new_highscore = false;
 				if(response_time < highscore){
 					highscore = response_time;
@@ -168,6 +181,8 @@ int main(){
 					usleep(100000);			// Sleep for 100ms.
 				}
 				leds = 0;
+				tries++;
+				printf("Now %i tries!\n", tries);
 				state = IDLE;
 				break;
 			}
@@ -177,7 +192,7 @@ int main(){
 	// Reset leds and displays if possible
 	if(!err){
 		err = control_leds(0);
-		err |= control_ssd(0);
+		err |= control_ssd(0, 0);
 	}
 	close(fd);
     return err;

@@ -56,8 +56,7 @@ static struct rtm_char_dev_data rtm_dev_data[MAX_DEV];
 static struct task_struct *task = NULL ;
 
 static int rtm_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
-    add_uevent_var(env, "DEVMODE=%#o", 0666);
-    return 0;
+    return add_uevent_var(env, "DEVMODE=%#o", 0666);
 }
 
 irq_handler_t irq_handler(int irq, void *dev_id, struct pt_regs * regs){

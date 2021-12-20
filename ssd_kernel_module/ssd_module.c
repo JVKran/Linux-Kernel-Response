@@ -58,8 +58,7 @@ static struct class *ssd_dev_class = NULL;
 static struct ssd_char_dev_data ssd_dev_data[MAX_DEV];
 
 static int ssd_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
-    add_uevent_var(env, "DEVMODE=%#o", 0666);
-    return 0;
+    return add_uevent_var(env, "DEVMODE=%#o", 0666);
 }
 
 static int init_handler(struct platform_device * pdev){

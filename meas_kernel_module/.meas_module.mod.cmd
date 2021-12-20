@@ -1,0 +1,1 @@
+cmd_/home/student/response_meter/meas_kernel_module/meas_module.mod := { echo  /home/student/response_meter/meas_kernel_module/meas_module.o; echo; } > /home/student/response_meter/meas_kernel_module/meas_module.mod
