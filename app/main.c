@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+// #include <curl/curl.h>
 
 #define LED_FILE		"/dev/leds_test_module"
 #define SSD_FILE		"/dev/ssd_test_module"
@@ -18,10 +19,11 @@
 #define RTM_IRQ			10
 
 #define MIN_RESP_TIME	80
+#define min(X,Y) (((X) < (Y)) ? (X) : (Y))
 
 static bool exit_request = false;
 uint16_t highscore = UINT16_MAX, tries = 0;
-static int fd;
+static int rtm_fd, ssd_fd, led_fd, meas_fd;
 uint32_t ssd = 0;
 
 enum states {IDLE, START, DELAY, COUNT, STOP};
@@ -33,38 +35,32 @@ void exit_handler(int n, siginfo_t *info, void *unused){
 }
 
 int control_leds(const uint32_t value){
-    FILE * fp = fopen(LED_FILE, "a");
-    if(fp == NULL){
-        return 1;
-    }
+	char buf[10];
+    sprintf(buf, "%i", value);
 
-    fprintf(fp, "%i", value);
-    return fclose(fp);
+    int written_chars = write(led_fd, buf, sizeof(buf));
+    return written_chars > 0 ? 0 : 1;
 }
 
 int control_ssd(const uint16_t score, const uint8_t tries){
-	FILE * fp = fopen(SSD_FILE, "a");
-    if(fp == NULL){
-        return 1;
-    }
+	char buf[10];
+    sprintf(buf, "%u%.4u", tries, score);
 
-    fprintf(fp, "%u%.4u", tries, score);
-    return fclose(fp);
+    int written_chars = write(ssd_fd, buf, sizeof(buf));
+    return written_chars > 0 ? 0 : 1;
 }
 
 int control_meas(const uint16_t state){
-	FILE * fp = fopen(MEAS_FILE, "a");
-    if(fp == NULL){
-        return 1;
-    }
+	char buf[10];
+    sprintf(buf, "%u", 1UL << state);
 
-    fprintf(fp, "%u", 1UL << state);
-    return fclose(fp);
+    int written_chars = write(meas_fd, buf, sizeof(buf));
+    return written_chars > 0 ? 0 : 1;
 }
 
 int read_response_time(uint16_t* time){
     char buf[10];
-    int read_chars = read(fd, buf, sizeof(buf));
+    int read_chars = read(rtm_fd, buf, sizeof(buf));
 
     sscanf(buf, "%hu", time);
     return read_chars > 0 ? 0 : -1;
@@ -79,20 +75,39 @@ void response_irq(int n, siginfo_t *info, void *unused){
 }
 
 int init_rtm(int * number){
-	fd = open(RTM_FILE, O_RDWR);
-    if(fd < 0) {
-		return fd;
-    }
- 
     printf("Registering application\n");
-    if (ioctl(fd, _IOW('a','a',int32_t*) ,(int32_t*)number)) {
+    if (ioctl(rtm_fd, _IOW('a','a',int32_t*) ,(int32_t*)number)) {
         printf("IOCTL error!\n");
-        close(fd);
+        close(rtm_fd);
         exit(1);
     }
    
     printf("Waiting for interrupts.\n");
 	return 0;
+}
+
+int open_files(){
+	int ret = 0;
+	ssd_fd = open(SSD_FILE, O_WRONLY);
+	ret = min(ssd_fd, ret);
+
+	led_fd = open(LED_FILE, O_WRONLY);
+	ret = min(led_fd, ret);
+
+	meas_fd = open(MEAS_FILE, O_WRONLY);
+	ret = min(meas_fd, ret);
+
+	rtm_fd = open(RTM_FILE, O_RDWR);
+	ret = min(rtm_fd, ret);
+
+	return ret;
+}
+
+void close_files(){
+	close(ssd_fd);
+	close(led_fd);
+	close(meas_fd);
+	close(rtm_fd);
 }
 
 int rotate_left(int num, int shift){
@@ -116,9 +131,17 @@ int main(){
     signal.sa_sigaction = response_irq;
     sigaction(RTM_IRQ, &signal, NULL);
 
+	// Open device files
+	err = open_files();
+	if(err < 0){
+		printf("Opening device files failed!\n");
+		return err;
+	}
+
 	// Initialize response time meter
 	err = init_rtm(&number);
 	if(err < 0){
+		printf("Initializing response time meter failed!\n");
 		return err;
 	}
 
@@ -193,7 +216,8 @@ int main(){
 	if(!err){
 		err = control_leds(0);
 		err |= control_ssd(0, 0);
+		err |= control_meas(8);
 	}
-	close(fd);
+	close_files();
     return err;
 }
