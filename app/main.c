@@ -19,8 +19,10 @@
 #define RTM_IRQ			10
 
 #define MIN_RESP_TIME	80
-#define ACCESS_TOKEN	"Response-Client"
 #define min(X,Y) (((X) < (Y)) ? (X) : (Y))
+
+#define SERVER_URL		"https://thingsboard.jvkran.com"
+#define ACCESS_TOKEN	"Response-Client"
 
 static bool exit_request = false;
 uint16_t highscore = UINT16_MAX, tries = 0;
@@ -122,7 +124,7 @@ int send_request(const char* attribute, const uint16_t value){
 
   char payload[100], url[200];
   sprintf(payload, "{%s: %i}", attribute, value);
-  sprintf(url, "https://thingsboard.jvkran.com/api/v1/%s/telemetry", ACCESS_TOKEN);
+  sprintf(url, "%s/api/v1/%s/telemetry", SERVER_URL, ACCESS_TOKEN);
 
   hnd = curl_easy_init();
   curl_easy_setopt(hnd, CURLOPT_BUFFERSIZE, 102400L);
