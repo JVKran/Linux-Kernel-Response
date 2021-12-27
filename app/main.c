@@ -20,6 +20,7 @@
 static bool exit_request = false;
 uint16_t highscore = UINT16_MAX, tries = 0;
 uint32_t ssd = 0;
+char player_name[50];
 
 // Finite state machine states
 enum states {IDLE, START, DELAY, COUNT, STOP};
@@ -47,8 +48,18 @@ int rotate_left(int num, int shift){
     return (num << shift) | (num >> (9 - shift));
 }
 
+void select_user(){
+	static uint8_t rounds = 3;
+	if(rounds++ >= 3){
+		printf("Enter your name:\n");
+		scanf("%s", player_name);
+		rounds = 0;
+	}
+}
+
 int main(){
 	int err = 0, number;
+	bool new = true;
 	struct sigaction signal;
 	uint16_t response_time, leds = 0;
 
@@ -88,6 +99,11 @@ int main(){
 					control_ssd(0, tries);
 				}
 				control_leds(leds);
+				if(new){
+					select_user();
+					printf("Press KEY_0 whenever you're ready %s!\n", player_name);
+					new = false;
+				}
 				if(rtm_state == 1){
 					state = START;
 					printf("Starting!\n");
@@ -141,7 +157,8 @@ int main(){
 				tries++;
 				printf("Now %i tries!\n", tries);
 				send_request(SERVER_URL, ACCESS_TOKEN, "response_time", response_time);
-				append_score(response_time);
+				append_score(player_name, response_time);
+				new = true;
 				state = IDLE;
 				break;
 			}

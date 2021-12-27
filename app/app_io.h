@@ -54,7 +54,7 @@ int control_ssd(const uint16_t score, const uint8_t tries);
 // must be opened. Returns non-zero value on error.
 int control_meas(const uint16_t state);
 
-int append_score(const uint16_t score);
+int append_score(const char* player_name, const uint16_t score);
 
 // Reads response time into passed pointer. Returns non-zero
 // value on error.
