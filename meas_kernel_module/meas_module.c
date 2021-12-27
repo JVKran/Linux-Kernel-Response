@@ -21,8 +21,7 @@ MODULE_LICENSE("GPL");
 // Module and hardware configuration
 #define DEV_TREE_LABEL  "altr,meas"
 #define MEAS_PIO_BASE   0x00
-#define DEVNAME         "Measurement Module"
-#define FILE_NAME       "measurement_module"
+#define DEV_NAME        "measurement_module"
 #define MAX_DEV	        1
 #define MAX_DATA_LEN    30
 
@@ -59,11 +58,11 @@ static int init_handler(struct platform_device * pdev){
 
     // Configure character device region
 	dev_t dev;
-    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, FILE_NAME);
+    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, DEV_NAME);
     dev_major = MAJOR(dev);
 
     // Create character device class
-    led_dev_class = class_create(THIS_MODULE, FILE_NAME);
+    led_dev_class = class_create(THIS_MODULE, DEV_NAME);
     led_dev_class->dev_uevent = led_dev_uevent;
 
     int i;
@@ -72,7 +71,7 @@ static int init_handler(struct platform_device * pdev){
         led_dev_data[i].cdev.owner = THIS_MODULE;
 
         cdev_add(&led_dev_data[i].cdev, MKDEV(dev_major, i), 1);
-        device_create(led_dev_class, NULL, MKDEV(dev_major, i), NULL, FILE_NAME);
+        device_create(led_dev_class, NULL, MKDEV(dev_major, i), NULL, DEV_NAME);
     }
 
 	return ret;
@@ -118,7 +117,7 @@ static const struct of_device_id led_module_id[] ={
 
 static struct platform_driver led_module_driver = {
 	.driver = {
-	 	.name = DEVNAME,
+	 	.name = DEV_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(led_module_id),
 	},

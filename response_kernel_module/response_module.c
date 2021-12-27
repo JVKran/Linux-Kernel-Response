@@ -21,10 +21,8 @@ MODULE_LICENSE("GPL");
 // Module and hardware configuration
 #define DEV_TREE_LABEL  "response,meter"
 #define METER_BASE      0x28
-#define DEVNAME         "Response Meter Module"
+#define DEV_NAME        "response_module"
 #define MAX_DEV	        1
-
-// 0 (state) en 1 (resp_time) zijn leesbaar. reg 20 (delay) is schrijfbaar.
 
 // Virtual and bridge base addresses
 void * LW_virtual;
@@ -53,7 +51,12 @@ struct rtm_char_dev_data {
 static int dev_major = 0;
 static struct class *rtm_dev_class = NULL;
 static struct rtm_char_dev_data rtm_dev_data[MAX_DEV];
-static struct task_struct *task = NULL ;
+static struct task_struct *task = NULL;
+
+static void set_delay(uint16_t delay){
+    delay = delay > 5000 ? 5000 : delay;
+    *(RTM_ptr + 7) = delay;
+}
 
 static int rtm_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
     return add_uevent_var(env, "DEVMODE=%#o", 0666);
@@ -81,19 +84,19 @@ static int init_handler(struct platform_device * pdev){
     // Map physical memory to pointers and turn displays off
 	LW_virtual = ioremap(HW_REGS_BASE, HW_REGS_SPAN);
 	RTM_ptr = LW_virtual + METER_BASE;      
-    // TODO: Write 0 in delay register.
+    set_delay(0);
 
     int irq_num = platform_get_irq(pdev, 0);
-	printk(KERN_ALERT DEVNAME ": IRQ %d wordt geregistreert!\n", irq_num);
-	int ret = request_irq(irq_num, (irq_handler_t) irq_handler, 0, DEVNAME, NULL);
+	printk(KERN_ALERT DEV_NAME ": IRQ %d wordt geregistreert!\n", irq_num);
+	int ret = request_irq(irq_num, (irq_handler_t) irq_handler, 0, DEV_NAME, NULL);
 
     // Configure character device region
 	dev_t dev;
-    ret |= alloc_chrdev_region(&dev, 0, MAX_DEV, "response_module");
+    ret |= alloc_chrdev_region(&dev, 0, MAX_DEV, DEV_NAME);
     dev_major = MAJOR(dev);
 
     // Create character device class
-    rtm_dev_class = class_create(THIS_MODULE, "response_module");
+    rtm_dev_class = class_create(THIS_MODULE, DEV_NAME);
     rtm_dev_class->dev_uevent = rtm_dev_uevent;
 
     int i;
@@ -102,7 +105,7 @@ static int init_handler(struct platform_device * pdev){
         rtm_dev_data[i].cdev.owner = THIS_MODULE;
 
         cdev_add(&rtm_dev_data[i].cdev, MKDEV(dev_major, i), 1);
-        device_create(rtm_dev_class, NULL, MKDEV(dev_major, i), NULL, "response_module");
+        device_create(rtm_dev_class, NULL, MKDEV(dev_major, i), NULL, DEV_NAME);
     }
 
 	return ret;
@@ -128,12 +131,12 @@ static int rtm_dev_release(struct inode *inode, struct file *file){
 static int clean_handler(struct platform_device *pdev){
     // Unregister IRQ
     int irq_num = platform_get_irq(pdev, 0);
-	printk(KERN_ALERT DEVNAME ": IRQ %d wordt vrijgegeven!\n", irq_num);
+	printk(KERN_ALERT DEV_NAME ": IRQ %d wordt vrijgegeven!\n", irq_num);
 
     // Undo mapping
 	iounmap(LW_virtual);
     free_irq(irq_num, NULL);
-    // TODO: Write 0 in delay register
+    set_delay(0);           // Delay of zero means using pseudo random LFSR.
 
 	int i;
     for (i = 0; i < MAX_DEV; i++) {
@@ -178,8 +181,7 @@ static ssize_t rtm_dev_write(struct file *file, const char __user *buf, size_t c
     int value;
     sscanf(databuf, "%i", &value);
     // Write value into delay register
-    // TODO: Verify if this underneath is right?
-    *(RTM_ptr + 7) = value;
+    set_delay(value);
 
     return count;
 }
@@ -191,7 +193,7 @@ static const struct of_device_id ssd_module_id[] ={
 
 static struct platform_driver ssd_module_driver = {
 	.driver = {
-	 	.name = DEVNAME,
+	 	.name = DEV_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(ssd_module_id),
 	},

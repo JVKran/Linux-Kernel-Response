@@ -21,13 +21,14 @@ MODULE_LICENSE("GPL");
 // Module and hardware configuration
 #define DEV_TREE_LABEL  "ssd,controller"
 #define CONTROLLER_BASE 0x20
-#define DEVNAME         "Seven Segment Module"
 #define MAX_DEV	        1
+#define DEV_NAME        "display_module"
 
 // Virtual and bridge base addresses
 void * LW_virtual;
 volatile int *SSD_ptr;
 
+// Show passed value on seven segment displays
 void show_value(unsigned int value){
 	int data = value % 10;
 	data |= (value / 10 % 10) << 4;
@@ -42,7 +43,8 @@ void show_value(unsigned int value){
 
 static int ssd_dev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
 
-// File operations struct
+// File operations struct. For a seven segment controller,
+// this boils down to only supporting write operations.
 static const struct file_operations ssd_dev_ops = {
 	.owner 	= THIS_MODULE,
 	.write	= ssd_dev_write
@@ -62,18 +64,18 @@ static int ssd_dev_uevent(struct device *dev, struct kobj_uevent_env *env){
 }
 
 static int init_handler(struct platform_device * pdev){
-    // Map physical memory to pointers and turn displays off
+    // Map physical memory to pointers and turn displays 'off'.
 	LW_virtual = ioremap(HW_REGS_BASE, HW_REGS_SPAN);
 	SSD_ptr = LW_virtual + CONTROLLER_BASE;
     show_value(0);
 
     // Configure character device region
 	dev_t dev;
-    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, "ssd_test_module");
+    int ret = alloc_chrdev_region(&dev, 0, MAX_DEV, DEV_NAME);
     dev_major = MAJOR(dev);
 
     // Create character device class
-    ssd_dev_class = class_create(THIS_MODULE, "ssd_test_module");
+    ssd_dev_class = class_create(THIS_MODULE, DEV_NAME);
     ssd_dev_class->dev_uevent = ssd_dev_uevent;
 
     int i;
@@ -82,7 +84,7 @@ static int init_handler(struct platform_device * pdev){
         ssd_dev_data[i].cdev.owner = THIS_MODULE;
 
         cdev_add(&ssd_dev_data[i].cdev, MKDEV(dev_major, i), 1);
-        device_create(ssd_dev_class, NULL, MKDEV(dev_major, i), NULL, "ssd_test_module");
+        device_create(ssd_dev_class, NULL, MKDEV(dev_major, i), NULL, DEV_NAME);
     }
 
 	return ret;
@@ -133,7 +135,7 @@ static const struct of_device_id ssd_module_id[] ={
 
 static struct platform_driver ssd_module_driver = {
 	.driver = {
-	 	.name = DEVNAME,
+	 	.name = DEV_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(ssd_module_id),
 	},
