@@ -67,7 +67,8 @@ int control_meas(const uint16_t state){
 int append_score(const char* player_name, const uint16_t score){
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
-    fprintf(score_fp, "Score of %s is %i at %02d-%02d-%d %02d:%02d:%02d!\n", player_name, score, tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    fprintf(score_fp, "Score of %s is %i at %02d-%02d-%d %02d:%02d:%02d!\n", player_name, score, 
+                        tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 int read_response_time(uint16_t* time){

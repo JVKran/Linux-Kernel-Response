@@ -48,6 +48,7 @@ int rotate_left(int num, int shift){
     return (num << shift) | (num >> (9 - shift));
 }
 
+// Select a new user every 3 rounds.
 void select_user(){
 	static uint8_t rounds = 3;
 	if(rounds++ >= 3){
